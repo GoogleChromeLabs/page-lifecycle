@@ -1,0 +1,48 @@
+{
+  "name": "page-lifecycle",
+  "version": "0.1.0",
+  "description": "A JavaScript library to observe Page Lifecycle API states: https://github.com/WICG/page-lifecycle",
+  "license": "Apache-2.0",
+  "main": "dist/lifecycle.mjs",
+  "scripts": {
+    "test": "eslint *.js src/**/*",
+    "build": "rollup -c"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GoogleChromeLabs/page-lifecycle.git"
+  },
+  "bugs": {
+    "url": "https://github.com/GoogleChromeLabs/page-lifecycle/issues"
+  },
+  "homepage": "https://github.com/GoogleChromeLabs/page-lifecycle#readme",
+  "keywords": [
+    "page",
+    "lifecycle",
+    "unload",
+    "beforeunload",
+    "visibilityState",
+    "visibilitychange",
+    "active",
+    "passive",
+    "hidden",
+    "frozen",
+    "discarded",
+    "terminated"
+  ],
+  "author": {
+    "name": "Philip Walton",
+    "email": "philip@philipwalton.com",
+    "url": "http://philipwalton.com"
+  },
+  "devDependencies": {
+    "babel-core": "^6.26.3",
+    "babel-plugin-external-helpers": "^6.22.0",
+    "babel-preset-env": "^1.7.0",
+    "eslint": "^4.19.1",
+    "eslint-config-google": "^0.9.1",
+    "rollup": "^0.60.4",
+    "rollup-plugin-babel": "^3.0.4",
+    "rollup-plugin-terser": "^1.0.1"
+  }
+}
