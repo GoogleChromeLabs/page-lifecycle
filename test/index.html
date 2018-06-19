@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Mocha Tests</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/mocha/5.2.0/mocha.min.css" rel="stylesheet">
+</head>
+<body>
+  <div id="mocha"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mocha/5.2.0/mocha.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chai/4.1.2/chai.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sinon.js/6.0.0/sinon.min.js"></script>
+
+  <script>
+  mocha.ui('bdd');
+
+  // Expose chai's assert globally.
+  self.assert = chai.assert;
+  </script>
+
+  <!-- Loads the mjs or the es5 version of lifecycle.js library -->
+  <!-- depending on the browser's capabilities -->
+  <script type="module">
+    import lifecycle from '../src/export.mjs';
+    // Expose lifecycle globally so the tests will work in both
+    // the module and nomodule cases.
+    self.lifecycle = lifecycle;
+  </script>
+  <script defer nomodule src="../dist/lifecycle.es5.js"></script>
+
+  <script type="module" src="../test/export-test.mjs"></script>
+  <script type="module" src="../test/Lifecycle-test.mjs"></script>
+  <script defer nomodule src="test-bundle.js"></script>
+
+  <script defer>
+  // Wait until the after the page is loaded so loading events don't
+  // interfere with the tests.
+  addEventListener('pageshow', function fn() {
+    // Remove the event listener so it's only invoked once.
+    removeEventListener('pageshow', fn);
+
+    var runner = mocha.run();
+    var failedTests = [];
+
+    runner.on('end', function() {
+      window.mochaResults = runner.stats;
+      window.mochaResults.reports = failedTests;
+    });
+
+    runner.on('fail', function(test, err) {
+      var flattenTitles = function(test){
+        var titles = [];
+        while (test.parent.title){
+          titles.push(test.parent.title);
+          test = test.parent;
+        }
+        return titles.reverse();
+      };
+
+      failedTests.push({
+        name: test.title,
+        result: false,
+        message: err.message,
+        stack: err.stack,
+        titles: flattenTitles(test)
+      });
+    });
+  });
+  </script>
+</body>
+</html>

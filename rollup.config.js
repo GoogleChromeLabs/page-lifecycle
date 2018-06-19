@@ -15,7 +15,9 @@
 
 const path = require('path');
 const babel = require('rollup-plugin-babel');
+const multiEntry = require('rollup-plugin-multi-entry');
 const {terser} = require('rollup-plugin-terser');
+
 
 const pkg = require('./package.json');
 
@@ -77,7 +79,7 @@ const generateBundleOpts = (file, {transpile, useNatives} = {}) => {
   plugins.push(terser(terserOpts));
 
   return {
-    input: 'src/main.mjs',
+    input: 'src/export.mjs',
     output: {
       file,
       format: transpile ? 'umd' : 'es',
@@ -94,4 +96,24 @@ module.exports = [
   generateBundleOpts('lifecycle.mjs'),
   generateBundleOpts('lifecycle.native.mjs', {useNatives: true}),
   generateBundleOpts('lifecycle.es5.js', {transpile: true}),
+
+  {
+    input: 'test/*-test.mjs',
+    output: {
+      file: 'test-bundle.js',
+      format: 'iife',
+      dir: 'test',
+      sourcemap: true,
+    },
+    plugins: [
+      multiEntry(),
+      babel({
+        presets: [['env', {modules: false}]],
+        plugins: ['external-helpers'],
+      }),
+    ],
+    watch: {
+      include: ['src/**/*.mjs', 'test/**/*.mjs'],
+    },
+  },
 ];

@@ -44,6 +44,7 @@
     "eslint-config-google": "^0.9.1",
     "rollup": "^0.60.4",
     "rollup-plugin-babel": "^3.0.4",
+    "rollup-plugin-multi-entry": "^2.0.2",
     "rollup-plugin-terser": "^1.0.1"
   },
   "eslintConfig": {

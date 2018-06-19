@@ -25,7 +25,6 @@ const DISCARDED = 'discarded';
 const TERMINATED = 'terminated';
 
 const EVENTS = [
-  'load',
   'pageshow',
   'resume',
   'focus',
@@ -59,20 +58,28 @@ const onbeforeunload = (evt) => {
  * @type {!Array<!Object>}
  */
 const LEGAL_STATE_TRANSITIONS = [
+  // The normal unload process (bfcache process is addressed above).
+  [ACTIVE, PASSIVE, HIDDEN, TERMINATED],
+
   // An active page transitioning to frozen,
   // or an unloading page going into the bfcache.
   [ACTIVE, PASSIVE, HIDDEN, FROZEN],
 
-  // A frozen page becoming active again.
-  [FROZEN, HIDDEN, PASSIVE, ACTIVE],
+  // A loading page can go to either active, passive, or hidden
+  [LOADING, ACTIVE],
+  [LOADING, PASSIVE],
+  [LOADING, HIDDEN],
 
-  // The normal unload process (bfcache process is addressed above).
-  [ACTIVE, PASSIVE, HIDDEN, TERMINATED],
+  // A hidden page transitioning back to active.
+  [HIDDEN, PASSIVE, ACTIVE],
 
-  // A loading page transitioning to either active, passive, or hidden.
-  [DISCARDED, LOADING, ACTIVE],
-  [DISCARDED, LOADING, PASSIVE],
-  [DISCARDED, LOADING, HIDDEN],
+  // A frozen page being resumed
+  [FROZEN, HIDDEN],
+
+  // A frozen (bfcached) page navigated back to
+  // Note: [FROZEN, HIDDEN] can happen here, but it's already covered above.
+  [FROZEN, ACTIVE],
+  [FROZEN, PASSIVE],
 ].map(toIndexedObject);
 
 /**
@@ -114,7 +121,9 @@ const getLegalStateTransitionPath = (oldState, newState) => {
  * @return {string}
  */
 const getCurrentState = () => {
-  if (document.visibilityState === HIDDEN) {
+  if (document.readyState !== 'complete') {
+    return LOADING;
+  } else if (document.visibilityState === HIDDEN) {
     return HIDDEN;
   } else {
     if (document.hasFocus()) {
@@ -136,20 +145,17 @@ export default class Lifecycle extends EventTarget {
   constructor() {
     super();
 
-    const initialState = document.wasDiscarded ? DISCARDED : LOADING;
+    const state = getCurrentState();
 
-    this._state = document.readyState !== 'complete' ?
-        LOADING : getCurrentState();
-
-    this._stateHistory = initialState === this._state ? [this._state] :
-        getLegalStateTransitionPath(initialState, this._state);
-    this._pendingState = [];
+    this._state = state;
+    this._unsavedChanges = [];
 
     // Bind the callback and add event listeners.
     this._handleEvents = this._handleEvents.bind(this);
 
     // Add capturing events on window so they run immediately.
-    EVENTS.forEach((evt) => addEventListener(evt, this._handleEvents, true));
+    EVENTS.forEach(
+        (evt) => self.addEventListener(evt, this._handleEvents, true));
   }
 
   /**
@@ -160,26 +166,28 @@ export default class Lifecycle extends EventTarget {
   }
 
   /**
-   * @return {!Array<string>}
+   * Returns the value of document.wasDiscarded. This is arguably unnecessary
+   * but I think there's value in having the entire API in one place.
+   * @return {string}
    */
-  get stateHistory() {
-    return [...this._stateHistory];
+  get pageWasDiscarded() {
+    return document.wasDiscarded;
   }
 
   /**
    * @param {Symbol|Object} id A unique symbol or object identifying the
    *.    pending state. This ID is required when removing the state later.
    */
-  addPendingState(id) {
+  addUnsavedChanges(id) {
     // Don't add duplicate state. Note: ideall this would be a set, but for
     // better browser compatibility we're using an array.
-    if (this._pendingState.indexOf(id) < 0) {
+    if (!this._unsavedChanges.includes(id)) {
       // If this is the first state being added,
       // also add a beforeunload listener.
-      if (this._pendingState.length === 0) {
-        addEventListener('beforeunload', onbeforeunload);
+      if (this._unsavedChanges.length === 0) {
+        self.addEventListener('beforeunload', onbeforeunload);
       }
-      this._pendingState.push(id);
+      this._unsavedChanges.push(id);
     }
   }
 
@@ -187,14 +195,14 @@ export default class Lifecycle extends EventTarget {
    * @param {Symbol|Object} id A unique symbol or object identifying the
    *.    pending state. This ID is required when removing the state later.
    */
-  removePendingState(id) {
-    const idIndex = this._pendingState.indexOf(id);
+  removeUnsavedChanges(id) {
+    const idIndex = this._unsavedChanges.indexOf(id);
 
     if (idIndex > -1) {
-      this._pendingState.splice(idIndex, 1);
+      this._unsavedChanges.splice(idIndex, 1);
 
       // If there's no more pending state, remove the event listener.
-      if (this._pendingState.length === 0) {
+      if (this._unsavedChanges.length === 0) {
         removeEventListener('beforeunload', onbeforeunload);
       }
     }
@@ -214,8 +222,6 @@ export default class Lifecycle extends EventTarget {
         const newState = path[i + 1];
 
         this._state = newState;
-        this._stateHistory.push(newState);
-
         this.dispatchEvent(
             new StateChangeEvent('statechange', {oldState, newState}));
       }
