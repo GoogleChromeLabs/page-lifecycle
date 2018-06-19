@@ -44,5 +44,26 @@
     "rollup": "^0.60.4",
     "rollup-plugin-babel": "^3.0.4",
     "rollup-plugin-terser": "^1.0.1"
+  },
+  "eslintConfig": {
+    "root": true,
+    "env": {
+      "browser": true,
+      "es6": true,
+      "node": true,
+      "mocha": true
+    },
+    "globals": {
+      "assert": false,
+      "sinon": false
+    },
+    "parserOptions": {
+      "ecmaVersion": 2018,
+      "sourceType": "module"
+    },
+    "extends": [
+      "eslint:recommended",
+      "google"
+    ]
   }
 }
