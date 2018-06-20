@@ -24,15 +24,29 @@ const FROZEN = 'frozen';
 const DISCARDED = 'discarded';
 const TERMINATED = 'terminated';
 
+const SUPPORTS_PAGE_TRANSITION_EVENTS = 'onpageshow' in self;
+
 const EVENTS = [
-  'pageshow',
-  'resume',
   'focus',
   'blur',
-  'pagehide',
   'visibilitychange',
   'freeze',
+  'resume',
+  // IE9-10 do not support the pageshow and pagehide events, so we fall back
+  // to load and unload. Note: unload *MUST ONLY* be added conditionally,
+  // otherwise it will prevent page navigation caching (a.k.a bfcache).
+  SUPPORTS_PAGE_TRANSITION_EVENTS ? 'pageshow' : 'load',
+  SUPPORTS_PAGE_TRANSITION_EVENTS ? 'pagehide' : 'unload',
 ];
+
+/**
+ * @param {!Event} evt
+ * @return {string}
+ */
+const onbeforeunload = (evt) => {
+  evt.preventDefault();
+  return evt.returnValue = 'Are you sure?';
+};
 
 /**
  * Converts an array of states into an object where the state is the key
@@ -44,15 +58,6 @@ const toIndexedObject = (arr) => arr.reduce((acc, val, idx) => {
   acc[val] = idx;
   return acc;
 }, {});
-
-/**
- * @param {!Event} evt
- * @return {string}
- */
-const onbeforeunload = (evt) => {
-  evt.preventDefault();
-  return evt.returnValue = 'Are you sure?';
-};
 
 /**
  * @type {!Array<!Object>}
@@ -112,7 +117,6 @@ const getLegalStateTransitionPath = (oldState, newState) => {
   // console.warn(`Invalid state change detected: ${oldState} > ${newState}`);
 };
 
-
 /**
  * Returns the current state based on the document's visibility and
  * in input focus states. Note this method is only used to determine
@@ -167,11 +171,12 @@ export default class Lifecycle extends EventTarget {
 
   /**
    * Returns the value of document.wasDiscarded. This is arguably unnecessary
-   * but I think there's value in having the entire API in one place.
-   * @return {string}
+   * but I think there's value in having the entire API in one place and
+   * consistent across browsers.
+   * @return {boolean}
    */
   get pageWasDiscarded() {
-    return document.wasDiscarded;
+    return document.wasDiscarded || false;
   }
 
   /**
@@ -181,7 +186,7 @@ export default class Lifecycle extends EventTarget {
   addUnsavedChanges(id) {
     // Don't add duplicate state. Note: ideall this would be a set, but for
     // better browser compatibility we're using an array.
-    if (!this._unsavedChanges.includes(id)) {
+    if (!this._unsavedChanges.indexOf(id) > -1) {
       // If this is the first state being added,
       // also add a beforeunload listener.
       if (this._unsavedChanges.length === 0) {
@@ -234,6 +239,7 @@ export default class Lifecycle extends EventTarget {
    */
   _handleEvents(evt) {
     switch (evt.type) {
+      case 'load':
       case 'pageshow':
       case 'resume':
         this._dispatchChangesIfNeeded(getCurrentState());
@@ -249,6 +255,7 @@ export default class Lifecycle extends EventTarget {
         }
         break;
       case 'pagehide':
+      case 'unload':
         this._dispatchChangesIfNeeded(evt.persisted ? FROZEN : TERMINATED);
         break;
       case 'visibilitychange':

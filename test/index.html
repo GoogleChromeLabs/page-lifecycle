@@ -3,13 +3,18 @@
 <head>
   <meta charset="utf-8">
   <title>Mocha Tests</title>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/mocha/5.2.0/mocha.min.css" rel="stylesheet">
+  <!-- Mocha v5+ doesn't work with IE9-10 -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/mocha/4.1.0/mocha.min.css" rel="stylesheet">
 </head>
 <body>
   <div id="mocha"></div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mocha/5.2.0/mocha.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chai/4.1.2/chai.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/sinon.js/6.0.0/sinon.min.js"></script>
+
+  <!-- Mocha v5+ doesn't work with IE9-10 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mocha/4.1.0/mocha.min.js"></script>
+
+  <!-- Sinon v6+ doesn't work with IE9-10 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sinon.js/5.1.0/sinon.min.js"></script>
 
   <script>
   mocha.ui('bdd');
@@ -33,11 +38,13 @@
   <script defer nomodule src="test-bundle.js"></script>
 
   <script defer>
+  var LOAD_EVENT = 'onpageshow' in self ? 'pageshow' : 'load';
+
   // Wait until the after the page is loaded so loading events don't
   // interfere with the tests.
-  addEventListener('pageshow', function fn() {
+  addEventListener(LOAD_EVENT, function fn() {
     // Remove the event listener so it's only invoked once.
-    removeEventListener('pageshow', fn);
+    removeEventListener(LOAD_EVENT, fn);
 
     var runner = mocha.run();
     var failedTests = [];

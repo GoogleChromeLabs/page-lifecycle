@@ -103,7 +103,6 @@ module.exports = [
       file: 'test-bundle.js',
       format: 'iife',
       dir: 'test',
-      sourcemap: true,
     },
     plugins: [
       multiEntry(),

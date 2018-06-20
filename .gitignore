@@ -3,3 +3,4 @@ npm-debug.log
 .DS_Store
 
 test/test-bundle.js
+test/test-bundle.js.map
