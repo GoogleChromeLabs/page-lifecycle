@@ -101,21 +101,15 @@ const stubMethod = (obj, method) => {
  */
 const stubState = (state) => {
   switch (state) {
-    case 'loading':
-      stubProperty(document, 'readyState').value('loading');
-      break;
     case 'active':
-      stubProperty(document, 'readyState').value('complete');
       stubProperty(document, 'visibilityState').value('visible');
       stubMethod(document, 'hasFocus').returns(true);
       break;
     case 'passive':
-      stubProperty(document, 'readyState').value('complete');
       stubProperty(document, 'visibilityState').value('visible');
       stubMethod(document, 'hasFocus').returns(false);
       break;
     case 'hidden':
-      stubProperty(document, 'readyState').value('complete');
       stubProperty(document, 'visibilityState').value('hidden');
       stubMethod(document, 'hasFocus').returns(false);
       break;
@@ -135,11 +129,6 @@ const stubState = (state) => {
  */
 const simulateStateChange = (oldState, newState, {bfcache} = {}) => {
   stubState(newState);
-
-  if (oldState === 'loading') {
-    fireEvent('load'); // Needed for IE9-10
-    fireEvent('pageshow');
-  }
 
   switch (newState) {
     case 'active':
@@ -188,7 +177,6 @@ const simulateStateChange = (oldState, newState, {bfcache} = {}) => {
 describe('Lifecycle', () => {
   beforeEach(() => {
     sandbox.restore();
-    stubState('loading');
   });
 
   afterEach(() => {
@@ -213,52 +201,44 @@ describe('Lifecycle', () => {
       assert(spy.calledWith('visibilitychange', sinon.match.func, true));
       assert(spy.calledWith('freeze', sinon.match.func, true));
       assert(spy.calledWith('resume', sinon.match.func, true));
-      assert(spy.calledWith(SUPPORTS_PAGE_TRANSITION_EVENTS ?
-          'pageshow' : 'load', sinon.match.func, true));
-      assert(spy.calledWith(SUPPORTS_PAGE_TRANSITION_EVENTS ?
-          'pagehide' : 'unload', sinon.match.func, true));
+      if (SUPPORTS_PAGE_TRANSITION_EVENTS) {
+        assert(spy.calledWith('pageshow', sinon.match.func, true));
+        assert(spy.calledWith('pagehide', sinon.match.func, true));
+      } else {
+        assert(spy.calledWith('unload', sinon.match.func, true));
+      }
     });
   });
 
   describe(`get state`, () => {
-    it(`returns 'loading' when the document's readyState is not complete`,
+    it(`returns 'active' when the document is visible and has input focus`,
         () => {
+      stubState('active');
       const lifecycle = new Lifecycle();
-
-      assert.equal(lifecycle.state, 'loading');
-    });
-
-    it(`returns 'active' when the document is loaded, visible, and has ` +
-        `input focus`, () => {
-      const lifecycle = new Lifecycle();
-
-      simulateStateChange('loading', 'active');
 
       assert.equal(lifecycle.state, 'active');
     });
 
-    it(`returns 'passive' when the document is loaded, visible, and does ` +
-        `not have input focus`, () => {
+    it(`returns 'passive' when the document visible and doesn't have input ` +
+        `focus`, () => {
+      stubState('passive');
       const lifecycle = new Lifecycle();
-
-      simulateStateChange('loading', 'passive');
 
       assert.equal(lifecycle.state, 'passive');
     });
 
-    it(`returns 'hidden' when the document is loaded but hidden`, () => {
+    it(`returns 'hidden' when the document is hidden and not frozen`, () => {
+      stubState('hidden');
       const lifecycle = new Lifecycle();
-
-      simulateStateChange('loading', 'hidden');
 
       assert.equal(lifecycle.state, 'hidden');
     });
 
-    it(`returns 'frozen' after the freeze event is fired`, () => {
+    it(`returns 'frozen' if the freeze event has just fired`, () => {
       if (SUPPORTS_FREEZE_EVENT) {
+        stubState('hidden');
         const lifecycle = new Lifecycle();
 
-        simulateStateChange('loading', 'hidden');
         simulateStateChange('hidden', 'frozen');
 
         assert.equal(lifecycle.state, 'frozen');
@@ -268,9 +248,9 @@ describe('Lifecycle', () => {
     it(`returns 'frozen' if the page is entering the page navigation cache`,
         () => {
       if (SUPPORTS_PAGE_TRANSITION_EVENTS) {
+        stubState('hidden');
         const lifecycle = new Lifecycle();
 
-        simulateStateChange('loading', 'hidden');
         simulateStateChange('hidden', 'frozen', {bfcache: true});
 
         assert.equal(lifecycle.state, 'frozen');
@@ -278,9 +258,9 @@ describe('Lifecycle', () => {
     });
 
     it(`returns 'terminated' if the page is being unloaded`, () => {
+      stubState('hidden');
       const lifecycle = new Lifecycle();
 
-      simulateStateChange('loading', 'hidden');
       simulateStateChange('hidden', 'terminated');
 
       assert.equal(lifecycle.state, 'terminated');
@@ -299,47 +279,33 @@ describe('Lifecycle', () => {
 
   describe(`addEventListener`, () => {
     it(`adds a listener for statechange events`, () => {
+      stubState('active');
+
       const lifecycle = new Lifecycle();
       const listener = sinon.spy();
       lifecycle.addEventListener('statechange', listener);
 
-      simulateStateChange('loading', 'active');
+      simulateStateChange('active', 'passive');
 
       assert.equal(listener.callCount, 1);
       assert(listener.getCall(0).calledWith(sinon.match({
-        type: 'statechange',
-        oldState: 'loading',
-        newState: 'active',
-        target: lifecycle,
-      })));
-      assert(listener.getCall(0).args[0] instanceof NativeEventOrEventShim);
-
-      simulateStateChange('active', 'passive');
-
-      assert.equal(listener.callCount, 2);
-      assert(listener.getCall(1).calledWith(sinon.match({
         type: 'statechange',
         oldState: 'active',
         newState: 'passive',
         target: lifecycle,
       })));
       assert(listener.getCall(0).args[0] instanceof NativeEventOrEventShim);
-    });
 
-    ['active', 'passive', 'hidden'].forEach((state) => {
-      it(`tracks valid state changes from loading to ${state}`, () => {
-        const lifecycle = new Lifecycle();
-        const listener = sinon.spy();
-        lifecycle.addEventListener('statechange', listener);
+      simulateStateChange('passive', 'active');
 
-        simulateStateChange('loading', 'active');
-
-        assert(listener.calledOnce);
-        assert(listener.firstCall.calledWith(sinon.match({
-          oldState: 'loading',
-          newState: 'active',
-        })));
-      });
+      assert.equal(listener.callCount, 2);
+      assert(listener.getCall(1).calledWith(sinon.match({
+        type: 'statechange',
+        oldState: 'passive',
+        newState: 'active',
+        target: lifecycle,
+      })));
+      assert(listener.getCall(0).args[0] instanceof NativeEventOrEventShim);
     });
 
     it(`tracks valid state change events from active to terminated`, () => {
@@ -629,24 +595,26 @@ describe('Lifecycle', () => {
 
   describe(`removeEventListener`, () => {
     it(`remove added event listeners`, () => {
+      stubState('active');
+
       const lifecycle = new Lifecycle();
       const listener = sinon.spy();
       lifecycle.addEventListener('statechange', listener);
 
-      simulateStateChange('loading', 'active');
+      simulateStateChange('active', 'passive');
 
       assert.equal(listener.callCount, 1);
       assert(listener.getCall(0).calledWith(sinon.match({
         type: 'statechange',
-        oldState: 'loading',
-        newState: 'active',
+        oldState: 'active',
+        newState: 'passive',
         target: lifecycle,
       })));
 
       // Remove the listener, then trigger a change to the 'passive' state.
       lifecycle.removeEventListener('statechange', listener);
 
-      simulateStateChange('active', 'passive');
+      simulateStateChange('passive', 'active');
 
       // Should not have been called again.
       assert.equal(listener.callCount, 1);

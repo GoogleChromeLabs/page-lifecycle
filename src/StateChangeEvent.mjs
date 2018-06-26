@@ -27,5 +27,6 @@ export default class StateChangeEvent extends Event {
     super(type);
     this.newState = initDict.newState;
     this.oldState = initDict.oldState;
+    this.originalEvent = initDict.originalEvent;
   }
 }

@@ -32,10 +32,10 @@ const EVENTS = [
   'visibilitychange',
   'freeze',
   'resume',
-  // IE9-10 do not support the pageshow and pagehide events, so we fall back
-  // to load and unload. Note: unload *MUST ONLY* be added conditionally,
-  // otherwise it will prevent page navigation caching (a.k.a bfcache).
-  SUPPORTS_PAGE_TRANSITION_EVENTS ? 'pageshow' : 'load',
+  'pageshow',
+  // IE9-10 do not support the pagehide event, so we fall back to unload
+  // Note: unload *MUST ONLY* be added conditionally, otherwise it will
+  // prevent page navigation caching (a.k.a bfcache).
   SUPPORTS_PAGE_TRANSITION_EVENTS ? 'pagehide' : 'unload',
 ];
 
@@ -69,11 +69,6 @@ const LEGAL_STATE_TRANSITIONS = [
   // An active page transitioning to frozen,
   // or an unloading page going into the bfcache.
   [ACTIVE, PASSIVE, HIDDEN, FROZEN],
-
-  // A loading page can go to either active, passive, or hidden
-  [LOADING, ACTIVE],
-  [LOADING, PASSIVE],
-  [LOADING, HIDDEN],
 
   // A hidden page transitioning back to active.
   [HIDDEN, PASSIVE, ACTIVE],
@@ -125,9 +120,7 @@ const getLegalStateTransitionPath = (oldState, newState) => {
  * @return {string}
  */
 const getCurrentState = () => {
-  if (document.readyState !== 'complete') {
-    return LOADING;
-  } else if (document.visibilityState === HIDDEN) {
+  if (document.visibilityState === HIDDEN) {
     return HIDDEN;
   } else {
     if (document.hasFocus()) {
@@ -217,7 +210,7 @@ export default class Lifecycle extends EventTarget {
    * @private
    * @param {string} newState
    */
-  _dispatchChangesIfNeeded(newState) {
+  _dispatchChangesIfNeeded(originalEvent, newState) {
     if (newState !== this._state) {
       const oldState = this._state;
       const path = getLegalStateTransitionPath(oldState, newState);
@@ -227,8 +220,11 @@ export default class Lifecycle extends EventTarget {
         const newState = path[i + 1];
 
         this._state = newState;
-        this.dispatchEvent(
-            new StateChangeEvent('statechange', {oldState, newState}));
+        this.dispatchEvent(new StateChangeEvent('statechange', {
+          oldState,
+          newState,
+          originalEvent,
+        }));
       }
     }
   }
@@ -239,24 +235,23 @@ export default class Lifecycle extends EventTarget {
    */
   _handleEvents(evt) {
     switch (evt.type) {
-      case 'load':
       case 'pageshow':
       case 'resume':
-        this._dispatchChangesIfNeeded(getCurrentState());
+        this._dispatchChangesIfNeeded(evt, getCurrentState());
         break;
       case 'focus':
-        this._dispatchChangesIfNeeded(ACTIVE);
+        this._dispatchChangesIfNeeded(evt, ACTIVE);
         break;
       case 'blur':
         // The `blur` event can fire while the page is being unloaded, so we
         // only need to update the state if the current state is "active".
         if (this._state === ACTIVE) {
-          this._dispatchChangesIfNeeded(getCurrentState());
+          this._dispatchChangesIfNeeded(evt, getCurrentState());
         }
         break;
       case 'pagehide':
       case 'unload':
-        this._dispatchChangesIfNeeded(evt.persisted ? FROZEN : TERMINATED);
+        this._dispatchChangesIfNeeded(evt, evt.persisted ? FROZEN : TERMINATED);
         break;
       case 'visibilitychange':
         // The document's `visibilityState` will change to hidden  as the page
@@ -264,11 +259,11 @@ export default class Lifecycle extends EventTarget {
         // change.
         if (this._state !== FROZEN &&
             this._state !== TERMINATED) {
-          this._dispatchChangesIfNeeded(getCurrentState());
+          this._dispatchChangesIfNeeded(evt, getCurrentState());
         }
         break;
       case 'freeze':
-        this._dispatchChangesIfNeeded(FROZEN);
+        this._dispatchChangesIfNeeded(evt, FROZEN);
         break;
     }
   }
