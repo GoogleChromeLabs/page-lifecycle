@@ -14,9 +14,14 @@
 */
 
 let supportsConstructableEventTarget;
+
 try {
   new EventTarget();
-  supportsConstructableEventTarget = true;
+
+  // When transpiled with babel and rollup, the `IS_CODE_TRANSPILED` constant
+  // is replaced with the boolean `true`, so this statement will always
+  // evaluate to `false`. When not transpiled, it will be true.
+  supportsConstructableEventTarget = typeof IS_CODE_TRANSPILED === 'undefined';
 } catch (err) {
   supportsConstructableEventTarget = false;
 }

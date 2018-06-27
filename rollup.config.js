@@ -16,6 +16,7 @@
 const path = require('path');
 const babel = require('rollup-plugin-babel');
 const multiEntry = require('rollup-plugin-multi-entry');
+const replace = require('rollup-plugin-replace');
 const {terser} = require('rollup-plugin-terser');
 
 
@@ -52,9 +53,16 @@ const generateBundleOpts = (file, {transpile, useNatives} = {}) => {
   }
 
   if (transpile) {
+    plugins.push(replace({
+      'IS_CODE_TRANSPILED': JSON.stringify(true),
+    }));
     plugins.push(babel({
       presets: [['env', {modules: false}]],
       plugins: ['external-helpers'],
+    }));
+  } else {
+    plugins.push(replace({
+      'IS_CODE_TRANSPILED': JSON.stringify(undefined),
     }));
   }
 
