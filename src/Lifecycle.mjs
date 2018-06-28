@@ -16,7 +16,6 @@
 import EventTarget from './shims/EventTarget.mjs';
 import StateChangeEvent from './StateChangeEvent.mjs';
 
-const LOADING = 'loading';
 const ACTIVE = 'active';
 const PASSIVE = 'passive';
 const HIDDEN = 'hidden';
