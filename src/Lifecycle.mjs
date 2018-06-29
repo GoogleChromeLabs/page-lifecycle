@@ -92,7 +92,7 @@ const LEGAL_STATE_TRANSITIONS = [
  */
 const getLegalStateTransitionPath = (oldState, newState) => {
   // We're intentionally not using for...of here so when we transpile to ES5
-  // to don't need to include the Symbol polyfills.
+  // we don't need to include the Symbol polyfills.
   for (let order, i = 0; order = LEGAL_STATE_TRANSITIONS[i]; ++i) {
     const oldIndex = order[oldState];
     const newIndex = order[newState];
@@ -121,13 +121,11 @@ const getLegalStateTransitionPath = (oldState, newState) => {
 const getCurrentState = () => {
   if (document.visibilityState === HIDDEN) {
     return HIDDEN;
-  } else {
-    if (document.hasFocus()) {
-      return ACTIVE;
-    } else {
-      return PASSIVE;
-    }
   }
+  if (document.hasFocus()) {
+    return ACTIVE;
+  }
+  return PASSIVE;
 };
 
 /**
