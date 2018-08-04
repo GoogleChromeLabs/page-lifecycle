@@ -134,7 +134,7 @@ The PageLifecycle.js library exports a `lifecycle` object, which is a singleton 
     </td>
   </tr>
   <tr valign="top">
-    <td><code>removeEventListener</code></td>
+    <td><code>removeUnsavedChanges</code></td>
     <td>
       <p><strong>Parameters:</strong></p>
       <ul>
