@@ -20,7 +20,7 @@ const ACTIVE = 'active';
 const PASSIVE = 'passive';
 const HIDDEN = 'hidden';
 const FROZEN = 'frozen';
-const DISCARDED = 'discarded';
+// const DISCARDED = 'discarded'; Not used but show to completeness.
 const TERMINATED = 'terminated';
 
 // Detect Safari to work around Safari-specific bugs.
@@ -222,6 +222,7 @@ export default class Lifecycle extends EventTarget {
 
   /**
    * @private
+   * @param {!Event} originalEvent
    * @param {string} newState
    */
   _dispatchChangesIfNeeded(originalEvent, newState) {

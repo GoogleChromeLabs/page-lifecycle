@@ -70,6 +70,10 @@ const fireEvent = (type, props = {}) => {
 /**
  * A wrapper around `sinon.stub()` for properties that supports non-existent
  * own properties (sinon doesn't).
+ * @param {!Object} obj
+ * @param {string} prop
+ * @param {*} value
+ * @return {!Object}
  */
 const stubProperty = (obj, prop, value) => {
   if (!obj.hasOwnProperty(prop)) {
@@ -86,6 +90,9 @@ const stubProperty = (obj, prop, value) => {
 /**
  * A wrapper around `sinon.stub()` for methods that automatically unstubs
  * an restubs a method if it's already been stubbed.
+ * @param {!Object} obj
+ * @param {string} method
+ * @return {!Object}
  */
 const stubMethod = (obj, method) => {
   if (obj[method].isSinonProxy) {
@@ -99,7 +106,7 @@ const stubMethod = (obj, method) => {
  * correct state (either at instantiation time or after an event). Note that
  * the frozen, terminated, and discarded states cannot be stubbed since
  * they require an event to fire to be observable.
- * @param {string}
+ * @param {string} state
  */
 const stubState = (state) => {
   switch (state) {

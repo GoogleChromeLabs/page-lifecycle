@@ -6,7 +6,7 @@
   "main": "dist/lifecycle.es5.js",
   "module": "dist/lifecycle.mjs",
   "scripts": {
-    "test": "eslint *.js src/**/*",
+    "test": "eslint *.js src/**/* test/*.mjs",
     "build": "rollup -c"
   },
   "repository": {
@@ -58,7 +58,8 @@
     },
     "globals": {
       "assert": false,
-      "sinon": false
+      "sinon": false,
+      "safari": false
     },
     "parserOptions": {
       "ecmaVersion": 2018,
