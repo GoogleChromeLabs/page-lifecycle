@@ -156,6 +156,8 @@ export default class Lifecycle extends EventTarget {
     // Safari does not reliably fire the `pagehide` or `visibilitychange`
     // events when closing a tab, so we have to use `beforeunload` with a
     // timeout to check whether the default action was prevented.
+    // - https://bugs.webkit.org/show_bug.cgi?id=151610
+    // - https://bugs.webkit.org/show_bug.cgi?id=151234
     // NOTE: we only add this to Safari because adding it to Firefox would
     // prevent the page from being eligible for bfcache.
     if (IS_SAFARI) {
