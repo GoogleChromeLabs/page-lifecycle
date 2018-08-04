@@ -17,6 +17,8 @@ import Lifecycle from '../src/Lifecycle.mjs';
 import NativeEventTargetOrEventTargetShim from '../src/shims/EventTarget.mjs';
 import NativeEventOrEventShim from '../src/shims/Event.mjs';
 
+// Detect Safari to work around Safari-specific bugs.
+const IS_SAFARI = typeof safari === 'object' && safari.pushNotification;
 const SUPPORTS_FREEZE_EVENT = 'onfreeze' in document;
 const SUPPORTS_PAGE_TRANSITION_EVENTS = 'onpageshow' in self;
 const SUPPORTS_PAGE_VISIBILITY = 'visibilityState' in document;
@@ -53,7 +55,7 @@ const fireEvent = (type, props = {}) => {
   // falls back to `document.createEvent()`.
   try {
     event = new Event(type);
-  } catch(err) {
+  } catch (err) {
     event = document.createEvent('Event');
     event.initEvent(type, false, false);
   }
@@ -74,12 +76,12 @@ const stubProperty = (obj, prop, value) => {
     return {
       value: (value) => {
         Object.defineProperty(obj, prop, {value, configurable: true});
-      }
+      },
     };
   } else {
     return sandbox.stub(obj, prop);
   }
-}
+};
 
 /**
  * A wrapper around `sinon.stub()` for methods that automatically unstubs
@@ -114,7 +116,7 @@ const stubState = (state) => {
       stubMethod(document, 'hasFocus').returns(false);
       break;
   }
-}
+};
 
 /**
  * Stubs the properties and methods needed for Lifecycle to detect the
@@ -172,7 +174,7 @@ const simulateStateChange = (oldState, newState, {bfcache} = {}) => {
       fireEvent('unload'); // Needed for IE9-10
       break;
   }
-}
+};
 
 describe('Lifecycle', () => {
   beforeEach(() => {
@@ -195,7 +197,15 @@ describe('Lifecycle', () => {
 
       new Lifecycle();
 
-      assert.equal(spy.callCount, 7);
+      if (!IS_SAFARI) {
+        assert.equal(spy.callCount, 7);
+      } else {
+        // Safari requires a `beforeunload` listener to fix buggy behavior:
+        // https://github.com/GoogleChromeLabs/page-lifecycle/issues/2
+        assert.equal(spy.callCount, 8);
+        assert(spy.calledWith('beforeunload', sinon.match.func));
+      }
+
       assert(spy.calledWith('focus', sinon.match.func, true));
       assert(spy.calledWith('blur', sinon.match.func, true));
       assert(spy.calledWith('visibilitychange', sinon.match.func, true));
@@ -591,6 +601,89 @@ describe('Lifecycle', () => {
         newState: 'terminated',
       })));
     });
+
+    if (IS_SAFARI) {
+      it(`adds a beforeunload listener to detect missing pagehide events`,
+          (done) => {
+        stubState('active');
+
+        const lifecycle = new Lifecycle();
+        const listener = sinon.spy();
+        lifecycle.addEventListener('statechange', listener);
+
+        fireEvent('beforeunload');
+        setTimeout(() => {
+          assert.equal(listener.callCount, 2);
+          assert(listener.getCall(0).calledWith(sinon.match({
+            oldState: 'active',
+            newState: 'passive',
+          })));
+          assert(listener.getCall(1).calledWith(sinon.match({
+            oldState: 'passive',
+            newState: 'hidden',
+          })));
+          done();
+        }, 0);
+      });
+
+      it(`accounts for the beforeunload listener being cancelled`, (done) => {
+        stubState('active');
+
+        const lifecycle = new Lifecycle();
+        const listener = sinon.spy();
+        lifecycle.addEventListener('statechange', listener);
+
+        fireEvent('beforeunload', {defaultPrevented: true});
+        fireEvent('beforeunload', {returnValue: '!'});
+        setTimeout(() => {
+          assert.equal(listener.callCount, 0);
+          done();
+        }, 0);
+      });
+
+      it(`accounts for other events firing before the beforeunload timeout`,
+          (done) => {
+        stubState('active');
+
+        const lifecycle = new Lifecycle();
+        const listener = sinon.spy();
+        lifecycle.addEventListener('statechange', listener);
+
+        // Schedule a timeout to fire the pagehide and pageshow events
+        // to ensure that receiving other events cancels the logic about
+        // to be performed by the beforeunload listener.
+        setTimeout(() => {
+          fireEvent('pagehide', {persisted: true});
+          fireEvent('pageshow', {persisted: true});
+        }, 0);
+
+        fireEvent('beforeunload');
+        setTimeout(() => {
+          assert.equal(listener.callCount, 4);
+          assert(listener.getCall(0).calledWith(sinon.match({
+            oldState: 'active',
+            newState: 'passive',
+            originalEvent: sinon.match({type: 'pagehide'}),
+          })));
+          assert(listener.getCall(1).calledWith(sinon.match({
+            oldState: 'passive',
+            newState: 'hidden',
+            originalEvent: sinon.match({type: 'pagehide'}),
+          })));
+          assert(listener.getCall(2).calledWith(sinon.match({
+            oldState: 'hidden',
+            newState: 'frozen',
+            originalEvent: sinon.match({type: 'pagehide'}),
+          })));
+          assert(listener.getCall(3).calledWith(sinon.match({
+            oldState: 'frozen',
+            newState: 'active',
+            originalEvent: sinon.match({type: 'pageshow'}),
+          })));
+          done();
+        }, 0);
+      });
+    }
   });
 
   describe(`removeEventListener`, () => {

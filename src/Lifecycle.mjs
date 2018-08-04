@@ -23,6 +23,9 @@ const FROZEN = 'frozen';
 const DISCARDED = 'discarded';
 const TERMINATED = 'terminated';
 
+// Detect Safari to work around Safari-specific bugs.
+const IS_SAFARI = typeof safari === 'object' && safari.pushNotification;
+
 const SUPPORTS_PAGE_TRANSITION_EVENTS = 'onpageshow' in self;
 
 const EVENTS = [
@@ -148,8 +151,22 @@ export default class Lifecycle extends EventTarget {
     this._handleEvents = this._handleEvents.bind(this);
 
     // Add capturing events on window so they run immediately.
-    EVENTS.forEach(
-        (evt) => self.addEventListener(evt, this._handleEvents, true));
+    EVENTS.forEach((evt) => addEventListener(evt, this._handleEvents, true));
+
+    // Safari does not reliably fire the `pagehide` or `visibilitychange`
+    // events when closing a tab, so we have to use `beforeunload` with a
+    // timeout to check whether the default action was prevented.
+    // NOTE: we only add this to Safari because adding it to Firefox would
+    // prevent the page from being eligible for bfcache.
+    if (IS_SAFARI) {
+      addEventListener('beforeunload', (evt) => {
+        this._safariBeforeUnloadTimeout = setTimeout(() => {
+          if (!(evt.defaultPrevented || evt.returnValue.length > 0)) {
+            this._dispatchChangesIfNeeded(evt, HIDDEN);
+          }
+        }, 0);
+      });
+    }
   }
 
   /**
@@ -180,7 +197,7 @@ export default class Lifecycle extends EventTarget {
       // If this is the first state being added,
       // also add a beforeunload listener.
       if (this._unsavedChanges.length === 0) {
-        self.addEventListener('beforeunload', onbeforeunload);
+        addEventListener('beforeunload', onbeforeunload);
       }
       this._unsavedChanges.push(id);
     }
@@ -231,6 +248,10 @@ export default class Lifecycle extends EventTarget {
    * @param {!Event} evt
    */
   _handleEvents(evt) {
+    if (IS_SAFARI) {
+      clearTimeout(this._safariBeforeUnloadTimeout);
+    }
+
     switch (evt.type) {
       case 'pageshow':
       case 'resume':
