@@ -1,6 +1,6 @@
 {
   "name": "page-lifecycle",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A JavaScript library to observe Page Lifecycle API states: https://github.com/WICG/page-lifecycle",
   "license": "Apache-2.0",
   "main": "dist/lifecycle.es5.js",
