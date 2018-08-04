@@ -12,7 +12,7 @@
 
 ## Overview
 
-PageLifecycle.js is a tiny JavaScript library (<1K gzipped) that allows developers to easily observe [Page Lifecycle API](https://github.com/WICG/page-lifecycle) state changes and implement Page Lifecycle best practices consistently across all browsers.
+PageLifecycle.js is a tiny JavaScript library (<1K gzipped) that allows developers to easily observe [Page Lifecycle API](https://developers.google.com/web/updates/2018/07/page-lifecycle-api) state changes and implement [Page Lifecycle best practices](https://developers.google.com/web/updates/2018/07/page-lifecycle-api#developer-recommendations-for-each-state) consistently across all browsers.
 
 **▶️ View demo: [page-lifecycle.glitch.me](https://page-lifecycle.glitch.me/) 👀**
 
