@@ -57,8 +57,8 @@ const generateBundleOpts = (file, {transpile, useNatives} = {}) => {
       'IS_CODE_TRANSPILED': JSON.stringify(true),
     }));
     plugins.push(babel({
-      presets: [['env', {modules: false}]],
-      plugins: ['external-helpers'],
+      presets: [['@babel/env', {modules: false}]],
+      plugins: ['@babel/external-helpers'],
     }));
   } else {
     plugins.push(replace({
@@ -89,9 +89,8 @@ const generateBundleOpts = (file, {transpile, useNatives} = {}) => {
   return {
     input: 'src/export.mjs',
     output: {
-      file,
+      file: 'dist/' + file,
       format: transpile ? 'umd' : 'es',
-      dir: 'dist',
       name: 'lifecycle',
       banner: `${BANNER}\n\n/*! ${file} v${pkg.version} */\n`,
       sourcemap: true,
@@ -108,15 +107,14 @@ module.exports = [
   {
     input: 'test/*-test.mjs',
     output: {
-      file: 'test-bundle.js',
+      file: 'test/test-bundle.js',
       format: 'iife',
-      dir: 'test',
     },
     plugins: [
       multiEntry(),
       babel({
-        presets: [['env', {modules: false}]],
-        plugins: ['external-helpers'],
+        presets: [['@babel/env', {modules: false}]],
+        plugins: ['@babel/external-helpers'],
       }),
     ],
     watch: {

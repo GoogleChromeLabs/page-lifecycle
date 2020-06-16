@@ -119,13 +119,14 @@ const getLegalStateTransitionPath = (oldState, newState) => {
  * in input focus states. Note this method is only used to determine
  * active vs passive vs hidden states, as other states require listening
  * for events.
+ * @param {boolean} wasOnBlur
  * @return {string}
  */
-const getCurrentState = () => {
+const getCurrentState = (wasOnBlur) => {
   if (document.visibilityState === HIDDEN) {
     return HIDDEN;
   }
-  if (document.hasFocus()) {
+  if (!wasOnBlur && document.hasFocus()) {
     return ACTIVE;
   }
   return PASSIVE;
@@ -267,7 +268,7 @@ export default class Lifecycle extends EventTarget {
         // The `blur` event can fire while the page is being unloaded, so we
         // only need to update the state if the current state is "active".
         if (this._state === ACTIVE) {
-          this._dispatchChangesIfNeeded(evt, getCurrentState());
+          this._dispatchChangesIfNeeded(evt, getCurrentState(true));
         }
         break;
       case 'pagehide':
