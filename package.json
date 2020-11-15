@@ -5,6 +5,7 @@
   "license": "Apache-2.0",
   "main": "dist/lifecycle.es5.js",
   "module": "dist/lifecycle.mjs",
+  "types": "src/export.d.ts",
   "scripts": {
     "test": "eslint *.js src/**/* test/*.mjs",
     "build": "rollup -c"
